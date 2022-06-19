@@ -42,7 +42,8 @@ def get_members(client):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--rebalance', help='Rebalance instances')
+    parser.add_argument('--rebalance', help='Given a string prefix, rebalance matching instances accross cluster nodes')
+    parser.add_argument('--drain', help='Drain a cluster node')
 
     args = parser.parse_args()
 
