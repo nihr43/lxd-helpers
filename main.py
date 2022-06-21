@@ -2,11 +2,12 @@ import os
 import argparse
 import random
 from pylxd import Client
+from functools import partial
 
 
 # randomly distributes a group of instances withmatching name prefix across
 # hardware.
-def rebalance(client, prefix):
+def rebalance(client_factory, client, prefix):
     instances = client.instances.all()
 
     acting_set = []
@@ -26,7 +27,9 @@ def rebalance(client, prefix):
 
     for i in acting_set:
         print('moving ' + i.name + ' to ' + cluster[cursor].server_name)
-        # TODO: ouch, need to create a client for each node on the fly
+
+        target_client = client_factory(endpoint='https://' + cluster[cursor].server_name + ':8443')
+        i.migrate(target_client, wait=True, live=True)
         cursor += 1
         if cursor >= cursor_end:
             cursor = 0
@@ -49,14 +52,14 @@ def main():
 
     home = os.environ['HOME']
 
-    client = Client(
-        endpoint='https://10.0.0.105:8443', #TODO
-        cert=(home + '/.config/lxc/client.crt',
-              home + '/.config/lxc/client.key'),
-        verify=home + '/.config/lxc/servercerts/10.0.0.105.crt')
+    client_factory = partial(Client, cert=(home + '/.config/lxc/client.crt',
+                                           home + '/.config/lxc/client.key'),
+                             verify=home + '/.config/lxc/servercerts/lxd.local.crt')
+
+    cluster_client = client_factory(endpoint='https://lxd.local:8443')
 
     if args.rebalance:
-        rebalance(client, args.rebalance)
+        rebalance(client_factory, cluster_client, args.rebalance)
 
 
 if __name__ == '__main__':
